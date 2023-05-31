@@ -15,6 +15,7 @@ Login to Azure CLI
 RG_NAME="insert rg name"
 SUBSCRIPTION_ID="insert subscription id"
 WORKSPACE_NAME="test-workspace"
+KEYVAULT_NAME="test-keyvault-342fgw"
 DEPLOYMENT_NAME=""
 ```
 
@@ -27,6 +28,13 @@ az deployment group create --resource-group $RG_NAME \
                            --parameters workspaceName=$WORKSPACE_NAME
 ``` 
 
+```bash
+az deployment group create --resource-group $RG_NAME \
+                           --subscription $SUBSCRIPTION_ID \
+                           --template-file arm-iac/keyvault.json \
+                           --parameters keyVaultName=$KEYVAULT_NAME
+``` 
+
 
 ## Delete workspace
 
@@ -37,4 +45,11 @@ az resource delete --resource-group $RG_NAME \
                    --subscription $SUBSCRIPTION_ID \
                    --name $WORKSPACE_NAME \
                    --resource-type "Microsoft.Databricks/workspaces"
+``` 
+
+```bash
+az resource delete --resource-group $RG_NAME \
+                   --subscription $SUBSCRIPTION_ID \
+                   --name $KEYVAULT_NAME \
+                   --resource-type "Microsoft.KeyVault/vaults"
 ``` 
