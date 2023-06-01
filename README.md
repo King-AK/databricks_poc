@@ -53,3 +53,8 @@ az resource delete --resource-group $RG_NAME \
                    --name $KEYVAULT_NAME \
                    --resource-type "Microsoft.KeyVault/vaults"
 ``` 
+
+```bash
+az keyvault purge --subscription $SUBSCRIPTION_ID \
+                  --name $KEYVAULT_NAME
+``` 

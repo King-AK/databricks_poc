@@ -42,6 +42,9 @@
     }
 
   },
+  "variables": {
+    "AzureDatabricksObjID": "c568ba7a-373f-46f2-b7ef-d20572854cf2"
+  },
   "resources": [
     {
       "type": "Microsoft.KeyVault/vaults",
@@ -50,7 +53,6 @@
       "location": "[parameters('location')]",
       "tags": "[parameters('tags')]",
       "properties": {
-        "enableRbacAuthorization": true,
         "tenantId": "[parameters('tenantId')]",
         "sku": {
           "name": "[parameters('skuName')]",
@@ -59,7 +61,19 @@
         "networkAcls": {
           "defaultAction": "Allow",
           "bypass": "AzureServices"
-        }
+        },
+        "accessPolicies": [
+          {
+            "tenantId": "[parameters('tenantId')]",
+            "objectId": "[variables('AzureDatabricksObjID')]",
+            "permissions": {
+              "secrets": [
+                "get",
+                "list"
+              ]
+            }
+          }
+        ]
       }
     }
   ],
