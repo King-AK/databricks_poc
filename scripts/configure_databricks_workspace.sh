@@ -24,8 +24,6 @@ DATABRICKS_URL=$(az databricks workspace show --name $WORKSPACE_NAME --resource-
 KV_RESOURCE_ID=$(az keyvault show --name $KEYVAULT_NAME --resource-group $RG_NAME | jq -r .id)
 KV_DNS_NAME=$(az keyvault show --name $KEYVAULT_NAME --resource-group $RG_NAME | jq -r .properties.vaultUri)
 
-
-
 # Configure Databricks CLI using AAD token
 databricks configure --aad-token --host "https://$DATABRICKS_URL"
 
