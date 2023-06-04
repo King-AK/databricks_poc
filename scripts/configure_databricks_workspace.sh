@@ -33,3 +33,6 @@ databricks secrets create-scope --scope-backend-type AZURE_KEYVAULT \
                                 --dns-name $KV_DNS_NAME \
                                 --scope $KEYVAULT_NAME \
                                 --initial-manage-principal users
+
+# TODO: Create Databricks Repo
+# 
