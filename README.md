@@ -1,7 +1,7 @@
 # databricks_poc
 Dummy repo to play around with Databricks
 
-## Create workspace
+## Deploy Infra
 
 Login to Azure CLI
 
@@ -9,7 +9,7 @@ Login to Azure CLI
 az login
 ```
 
-Login to Azure CLI
+Set Env Vars
 
 ```bash
 RG_NAME="insert rg name"
@@ -22,42 +22,24 @@ DEPLOYMENT_NAME=""
 Deploy infra
 
 ```bash
-az deployment group create --resource-group $RG_NAME \
-                           --subscription $SUBSCRIPTION_ID \
-                           --template-file arm-iac/workspace.json \
-                           --parameters workspaceName=$WORKSPACE_NAME
+bash scripts/deploy-resources.sh $RG_NAME $SUBSCRIPTION_ID $KEYVAULT_NAME $WORKSPACE_NAME $STORAGE_ACCOUNT_NAME
 ``` 
+
+After this, log into Azure Portal and access Databricks workspace. View the Databricks Repos, and observe that it is empty.
+
+Configure the Databricks workspace
 
 ```bash
-az deployment group create --resource-group $RG_NAME \
-                           --subscription $SUBSCRIPTION_ID \
-                           --template-file arm-iac/keyvault.json \
-                           --parameters keyVaultName=$KEYVAULT_NAME
+bash scripts/configure_databricks_workspace.sh $WORKSPACE_NAME $KEYVAULT_NAME $RG_NAME
 ``` 
-
-After provisioning, log into Databricks first time so that tokens may be used with account.
-
 
 
 ## Delete workspace
 
-Remove infra
+Collect the service princpal app id from the portal
+
+Remove infra and clean up resources
 
 ```bash
-az resource delete --resource-group $RG_NAME \
-                   --subscription $SUBSCRIPTION_ID \
-                   --name $WORKSPACE_NAME \
-                   --resource-type "Microsoft.Databricks/workspaces"
-``` 
-
-```bash
-az resource delete --resource-group $RG_NAME \
-                   --subscription $SUBSCRIPTION_ID \
-                   --name $KEYVAULT_NAME \
-                   --resource-type "Microsoft.KeyVault/vaults"
-``` 
-
-```bash
-az keyvault purge --subscription $SUBSCRIPTION_ID \
-                  --name $KEYVAULT_NAME
+bash scripts/remove-resources.sh $RG_NAME $SUBSCRIPTION_ID $KEYVAULT_NAME $WORKSPACE_NAME $STORAGE_ACCOUNT_NAME "<SERVICE PRINCPAL APP_ID>"
 ``` 
