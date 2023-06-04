@@ -33,9 +33,10 @@ az keyvault set-policy --name $KEYVAULT_NAME \
                        --object-id $USER_OBJ_ID
 
 # Create SP, collect info, populate into KV 
-az ad sp create-for-rbac --name $SP_NAME
-APP_ID=$(az ad sp list --display-name $SP_NAME | jq -r .[0].appId)
-SP_SECRET=$(az ad sp credential reset --id $APP_ID --display-name databricks-poc | jq -r .password)
+echo "Creating SP $SP_NAME ..."
+OUTPUT=$(az ad sp create-for-rbac --name $SP_NAME)
+APP_ID=$(echo $OUTPUT | jq -r .appId)
+SP_SECRET=$(echo $OUTPUT | jq -r .password)
 echo "Created SP $SP_NAME with APP ID: $APP_ID ..."
 
 az keyvault secret set --name sp-databricks-poc-app-id --value $APP_ID --vault-name $KEYVAULT_NAME
@@ -43,6 +44,7 @@ az keyvault secret set --name sp-databricks-poc-app-secret --value $SP_SECRET --
 
 
 # Grant SP permissions to access KV, Blob Storage
+echo "Granting SP $SP_NAME KV and Storage permissions ..."
 az keyvault set-policy --name $KEYVAULT_NAME \
                        --secret-permissions all \
                        --spn $APP_ID
