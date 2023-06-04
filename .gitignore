@@ -1,2 +1,7 @@
 data
 venv
+
+# terraform stuff
+terraform-iac/.terraform
+terraform-iac/.*.hcl
+terraform-iac/*.tfstate
