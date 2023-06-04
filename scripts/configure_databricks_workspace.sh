@@ -1,5 +1,6 @@
 WORKSPACE_NAME=$1
 KEYVAULT_NAME=$2
+RG_NAME=$3
 
 
 # Set up venv
@@ -34,5 +35,5 @@ databricks secrets create-scope --scope-backend-type AZURE_KEYVAULT \
                                 --scope $KEYVAULT_NAME \
                                 --initial-manage-principal users
 
-# TODO: Create Databricks Repo
+# TODO: Create Databricks Repo pointing to notebooks
 # 

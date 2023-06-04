@@ -35,6 +35,9 @@ az deployment group create --resource-group $RG_NAME \
                            --parameters keyVaultName=$KEYVAULT_NAME
 ``` 
 
+After provisioning, log into Databricks first time so that tokens may be used with account.
+
+
 
 ## Delete workspace
 
