@@ -29,5 +29,8 @@ resource "databricks_git_credential" "git" {
 resource "databricks_repo" "repo" {
   url          = "https://github.com/King-AK/databricks_repo_poc.git"
   git_provider = "gitHub"
+  depends_on = [
+    databricks_git_credential.git
+  ]
 }
 

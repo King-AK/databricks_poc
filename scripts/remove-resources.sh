@@ -33,3 +33,9 @@ az resource delete --resource-group $RG_NAME \
 echo "Deleting SP ..."
 az ad sp delete --id $6
 az ad app delete --id $6
+
+# Clean up terraform settings
+echo "Cleaning up terraform settings ..."
+rm -rf terraform-iac/.terraform
+rm terraform-iac/.terraform.lock.hcl
+rm terraform-iac/terraform.tfstate
