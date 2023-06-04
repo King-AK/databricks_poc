@@ -36,4 +36,4 @@ databricks secrets create-scope --scope-backend-type AZURE_KEYVAULT \
                                 --initial-manage-principal users
 
 # TODO: Create Databricks Repo pointing to notebooks
-# 
+# If Git Repo Token needed, consider collecting as environment variable with check to see if set
