@@ -1,6 +1,8 @@
 WORKSPACE_NAME=$1
 KEYVAULT_NAME=$2
 RG_NAME=$3
+STORAGE_ACCOUNT_NAME=$4
+TENANT_ID=$5
 if [ -z ${GITHUB_TOKEN+x} ]; then 
     echo "ENV VAR GITHUB_TOKEN is unset. Please set this ENV var"
     exit 1 
@@ -42,6 +44,9 @@ databricks secrets create-scope --scope-backend-type AZURE_KEYVAULT \
 
 # Use Terraform to configure Git Repo
 cd terraform-iac
+export TF_VAR_STORAGE_ACCOUNT_NAME=$STORAGE_ACCOUNT_NAME
+export TF_VAR_TENANT_ID=$TENANT_ID
+export TF_VAR_SECRET_SCOPE_NAME=$KEYVAULT_NAME
 terraform init
 terraform plan
 terraform apply -auto-approve

@@ -3,6 +3,7 @@ SUBSCRIPTION_ID=$2
 KEYVAULT_NAME=$3
 WORKSPACE_NAME=$4
 STORAGE_ACCOUNT_NAME=$5
+STORAGE_CONTAINER_NAME=$6
 SP_NAME="sp-databricks-poc"
 
 # Provision Azure Keyvault
@@ -24,7 +25,8 @@ echo "Provisioning Azure Storage Account $STORAGE_ACCOUNT_NAME ..."
 az deployment group create --resource-group $RG_NAME \
                            --subscription $SUBSCRIPTION_ID \
                            --template-file arm-iac/storage.json \
-                           --parameters storageAccountName=$STORAGE_ACCOUNT_NAME
+                           --parameters storageAccountName=$STORAGE_ACCOUNT_NAME \
+                                        containerName=$STORAGE_CONTAINER_NAME
 
 # Grant account access to KV
 USER_OBJ_ID=$(az ad signed-in-user show | jq -r .id)
