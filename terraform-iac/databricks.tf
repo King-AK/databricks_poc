@@ -10,68 +10,111 @@ terraform {
   }
 }
 
-# Configure the Microsoft Azure Provider
 provider "azurerm" {
   features {}
 }
+provider "databricks" {
+  config_file = "~/.databrickscfg"
+}
 
-# Use environment variables for authentication.
-provider "databricks" {}
-
-# Use ENV vars 
-variable "STORAGE_ACCOUNT_NAME" {
+#### Variables 
+variable "storage_account_name" {
   type = string
 }
 
-variable "TENANT_ID" {
+variable "tenant_id" {
   type = string
 }
 
-variable "SECRET_SCOPE_NAME" {
+variable "keyvault_name" {
   type = string
 }
 
-# Create the cluster with the "smallest" amount
-# of resources allowed.
+variable "git_username" {
+  type    = string
+  default = "king-ak@github.com"
+}
+
+variable "git_provider" {
+  type    = string
+  default = "gitHub"
+}
+
+variable "databricks_repo_url" {
+  type    = string
+  default = "https://github.com/King-AK/databricks_repo_poc.git"
+}
+
+variable "databricks_etl_cluster_name" {
+  type    = string
+  default = "test-cluster"
+}
+
+variable "keyvault_rg_name" {
+  type = string
+}
+
+### Data
+# Create the cluster with the "smallest" amount of resources allowed.
 data "databricks_node_type" "smallest" {
   local_disk = true
 }
 
-# Use the latest Databricks Runtime
-# Long Term Support (LTS) version.
+# Use the latest Databricks Runtime Long Term Support (LTS) version.
 data "databricks_spark_version" "latest_lts" {
   long_term_support = true
 }
 
+# Get Keyvault information
+data "azurerm_key_vault" "keyVault" {
+  name                = var.keyvault_name
+  resource_group_name = var.keyvault_rg_name
+}
+
+### Resources
 # Configure Git Connection
 resource "databricks_git_credential" "git" {
-  git_username = "king-ak@github.com"
-  git_provider = "gitHub"
+  git_username = var.git_username
+  git_provider = var.git_provider
   force        = true
 }
 
 # Configure Databricks Repo
 resource "databricks_repo" "repo" {
-  url          = "https://github.com/King-AK/databricks_repo_poc.git"
-  git_provider = "gitHub"
+  url          = var.databricks_repo_url
+  git_provider = var.git_provider
   depends_on = [
     databricks_git_credential.git
   ]
 }
 
-# Configure Test Cluster
-resource "databricks_cluster" "cluster" {
-  cluster_name            = "test-cluster"
+# Configure Databricks Secret Scope
+resource "databricks_secret_scope" "akv_secret_scope" {
+  name                     = var.keyvault_name
+  initial_manage_principal = "users"
+
+  keyvault_metadata {
+    resource_id = data.azurerm_key_vault.keyVault.id
+    dns_name    = data.azurerm_key_vault.keyVault.vault_uri
+  }
+}
+
+# Configure ETL Cluster
+resource "databricks_cluster" "etl_cluster" {
+  cluster_name            = var.databricks_etl_cluster_name
   node_type_id            = data.databricks_node_type.smallest.id
   spark_version           = data.databricks_spark_version.latest_lts.id
   autotermination_minutes = 10
-  num_workers = 1
+  num_workers             = 1
   spark_conf = {
-    format("fs.azure.account.auth.type.%s.dfs.core.windows.net", var.STORAGE_ACCOUNT_NAME) = "OAuth"
-    format("fs.azure.account.oauth.provider.type.%s.dfs.core.windows.net", var.STORAGE_ACCOUNT_NAME) = "org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider"
-    format("fs.azure.account.oauth2.client.id.%s.dfs.core.windows.net", var.STORAGE_ACCOUNT_NAME) = format("{{secrets/%s/sp-databricks-poc-app-id}}", var.SECRET_SCOPE_NAME)
-    format("fs.azure.account.oauth2.client.secret.%s.dfs.core.windows.net", var.STORAGE_ACCOUNT_NAME) = format("{{secrets/%s/sp-databricks-poc-app-secret}}", var.SECRET_SCOPE_NAME)
-    format("fs.azure.account.oauth2.client.endpoint.%s.dfs.core.windows.net", var.STORAGE_ACCOUNT_NAME) = format("https://login.microsoftonline.com/%s/oauth2/token", var.TENANT_ID)
+    format("fs.azure.account.auth.type.%s.dfs.core.windows.net", var.storage_account_name)              = "OAuth"
+    format("fs.azure.account.oauth.provider.type.%s.dfs.core.windows.net", var.storage_account_name)    = "org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider"
+    format("fs.azure.account.oauth2.client.id.%s.dfs.core.windows.net", var.storage_account_name)       = format("{{secrets/%s/sp-databricks-poc-app-id}}", databricks_secret_scope.akv_secret_scope.name)
+    format("fs.azure.account.oauth2.client.secret.%s.dfs.core.windows.net", var.storage_account_name)   = format("{{secrets/%s/sp-databricks-poc-app-secret}}", databricks_secret_scope.akv_secret_scope.name)
+    format("fs.azure.account.oauth2.client.endpoint.%s.dfs.core.windows.net", var.storage_account_name) = format("https://login.microsoftonline.com/%s/oauth2/token", var.tenant_id)
   }
+  depends_on = [
+    databricks_secret_scope.akv_secret_scope
+  ]
 }
 

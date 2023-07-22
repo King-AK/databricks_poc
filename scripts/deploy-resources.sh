@@ -21,7 +21,7 @@ az deployment group create --resource-group $RG_NAME \
                            --parameters workspaceName=$WORKSPACE_NAME
 
 # Provision Azure Storage Account
-echo "Provisioning Azure Storage Account $STORAGE_ACCOUNT_NAME ..."
+echo "Provisioning Azure Storage Account $STORAGE_ACCOUNT_NAME with Container $STORAGE_CONTAINER_NAME ..."
 az deployment group create --resource-group $RG_NAME \
                            --subscription $SUBSCRIPTION_ID \
                            --template-file arm-iac/storage.json \

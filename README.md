@@ -24,17 +24,12 @@ TENANT_ID="insert azure tenant id"
 Deploy infra to Azure
 
 ```bash
-bash scripts/deploy-resources.sh $RG_NAME $SUBSCRIPTION_ID $KEYVAULT_NAME $WORKSPACE_NAME $STORAGE_ACCOUNT_NAME
+bash scripts/deploy-resources.sh $RG_NAME $SUBSCRIPTION_ID $KEYVAULT_NAME $WORKSPACE_NAME $STORAGE_ACCOUNT_NAME $STORAGE_CONTAINER_NAME
 ``` 
 
-After this, log into Azure Portal and access Databricks workspace. View the Databricks Repos, and observe that it is empty.
+After this, log into Azure Portal and access Databricks workspace. View the Databricks Repos, and observe that it is empty. This is a solid enough base to work with. Switch to using Terraform for further configuration of the workspace. 
 
-
-Create a Git token and set an environment variable for it
-
-```bash
-export GITHUB_TOKEN="github token"
-```
+The tfvars file located at `terraform-iac/example-terraform.tfvars.json` can be used as a starting point to configure a tfvars file that configures the Databricks workspace. The values can be updated and placed in a `terraform-iac/terraform.tfvars.json` file, which the later scripts will refer to.
 
 Upload data to storage account
 
@@ -42,11 +37,16 @@ Upload data to storage account
 bash scripts/copy_data_to_blob_storage.sh $STORAGE_ACCOUNT_NAME $STORAGE_CONTAINER_NAME
 ```
 
+Create a Git token and set an environment variable for it
+
+```bash
+export GITHUB_TOKEN="github token"
+```
 
 Configure the Databricks workspace
 
 ```bash
-bash scripts/configure_databricks_workspace.sh $WORKSPACE_NAME $KEYVAULT_NAME $RG_NAME $STORAGE_ACCOUNT_NAME $TENANT_ID
+bash scripts/configure_databricks_workspace.sh $WORKSPACE_NAME $RG_NAME
 ``` 
 
 At this point the Databricks workspace is configured with secret scope, cluster w/ service principal, and git repo connection and can execute code in the populated notebooks.
