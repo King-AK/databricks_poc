@@ -82,6 +82,7 @@ resource "databricks_git_credential" "git" {
 # Configure Databricks Repo
 resource "databricks_repo" "repo" {
   url          = var.databricks_repo_url
+  path         = "/Repos/databricks_poc/databricks_repo_poc"
   git_provider = var.git_provider
   depends_on = [
     databricks_git_credential.git
@@ -103,7 +104,7 @@ resource "databricks_secret_scope" "akv_secret_scope" {
 resource "databricks_cluster" "etl_cluster" {
   cluster_name            = var.databricks_etl_cluster_name
   node_type_id            = data.databricks_node_type.smallest.id
-  spark_version           ="13.1.x-scala2.12"
+  spark_version           = "13.1.x-scala2.12"
   autotermination_minutes = 10
   num_workers             = 1
   spark_conf = {
@@ -113,8 +114,16 @@ resource "databricks_cluster" "etl_cluster" {
     format("fs.azure.account.oauth2.client.secret.%s.dfs.core.windows.net", var.storage_account_name)   = format("{{secrets/%s/sp-databricks-poc-app-secret}}", databricks_secret_scope.akv_secret_scope.name)
     format("fs.azure.account.oauth2.client.endpoint.%s.dfs.core.windows.net", var.storage_account_name) = format("https://login.microsoftonline.com/%s/oauth2/token", var.tenant_id)
   }
+  dynamic "library" {
+    for_each = ["langchain==0.0.239", "openai==0.27.8", "matplotlib==3.7.2"]
+    content {
+      pypi {
+        package = library.value
+      }
+    }
+  }
+
   depends_on = [
     databricks_secret_scope.akv_secret_scope
   ]
 }
-
