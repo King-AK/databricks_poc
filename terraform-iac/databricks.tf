@@ -159,7 +159,7 @@ resource "databricks_job" "etl_job" {
     }
 
     notebook_task {
-      notebook_path = "notebooks/bronze/ingest.py"
+      notebook_path = "notebooks/bronze/ingest"
       source        = "Git Provider"
       base_parameters = {
         storage_account_name = var.storage_account_name
@@ -191,7 +191,7 @@ resource "databricks_job" "etl_job" {
       }
 
       notebook_task {
-        notebook_path = "notebooks/silver/curate.py"
+        notebook_path = "notebooks/silver/curate"
         source        = "Git Provider"
         base_parameters = {
           target_team          = task.value
