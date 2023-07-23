@@ -22,6 +22,10 @@ variable "storage_account_name" {
   type = string
 }
 
+variable "storage_account_container_name" {
+  type = string
+}
+
 variable "tenant_id" {
   type = string
 }
@@ -128,9 +132,15 @@ resource "databricks_cluster" "etl_cluster" {
   ]
 }
 
-# Create workflow with Combo Sequential/Fan-Out Pattern for PoC dataset
+# Starter point for workflow creation using notebook for task
 resource "databricks_job" "etl_job" {
   name = "Databricks PoC Workflow"
+
+  git_source {
+    url      = var.databricks_repo_url
+    provider = var.git_provider
+    branch   = "main"
+  }
 
   task {
     task_key = "bronze"
@@ -150,6 +160,10 @@ resource "databricks_job" "etl_job" {
 
     notebook_task {
       notebook_path = "/Repos/databricks_poc/databricks_repo_poc/notebooks/bronze/ingest"
+      base_parameters = {
+        storage_account_name   = var.storage_account_name
+        container_name = var.storage_account_container_name
+      }
     }
   }
 
