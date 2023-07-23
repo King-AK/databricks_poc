@@ -127,3 +127,33 @@ resource "databricks_cluster" "etl_cluster" {
     databricks_secret_scope.akv_secret_scope
   ]
 }
+
+# Create workflow with Combo Sequential/Fan-Out Pattern for PoC dataset
+resource "databricks_job" "etl_job" {
+  name = "Databricks PoC Workflow"
+
+  task {
+    task_key = "bronze"
+
+    new_cluster {
+      num_workers   = 1
+      spark_version = "13.1.x-scala2.12"
+      node_type_id  = data.databricks_node_type.smallest.id
+      spark_conf = {
+        format("fs.azure.account.auth.type.%s.dfs.core.windows.net", var.storage_account_name)              = "OAuth"
+        format("fs.azure.account.oauth.provider.type.%s.dfs.core.windows.net", var.storage_account_name)    = "org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider"
+        format("fs.azure.account.oauth2.client.id.%s.dfs.core.windows.net", var.storage_account_name)       = format("{{secrets/%s/sp-databricks-poc-app-id}}", databricks_secret_scope.akv_secret_scope.name)
+        format("fs.azure.account.oauth2.client.secret.%s.dfs.core.windows.net", var.storage_account_name)   = format("{{secrets/%s/sp-databricks-poc-app-secret}}", databricks_secret_scope.akv_secret_scope.name)
+        format("fs.azure.account.oauth2.client.endpoint.%s.dfs.core.windows.net", var.storage_account_name) = format("https://login.microsoftonline.com/%s/oauth2/token", var.tenant_id)
+      }
+    }
+
+    notebook_task {
+      notebook_path = "/Repos/databricks_poc/databricks_repo_poc/notebooks/bronze/ingest"
+    }
+  }
+
+  depends_on = [
+    databricks_cluster.etl_cluster
+  ]
+}
