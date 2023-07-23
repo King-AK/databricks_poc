@@ -132,7 +132,7 @@ resource "databricks_cluster" "etl_cluster" {
   ]
 }
 
-# Starter point for workflow creation using notebook for task
+# Starter point for workflow creation using notebooks for tasks with a Sequential/Fan-Out pattern.
 resource "databricks_job" "etl_job" {
   name = "Databricks PoC Workflow"
 
@@ -159,10 +159,45 @@ resource "databricks_job" "etl_job" {
     }
 
     notebook_task {
-      notebook_path = "/Repos/databricks_poc/databricks_repo_poc/notebooks/bronze/ingest"
+      notebook_path = "notebooks/bronze/ingest.py"
+      source        = "Git Provider"
       base_parameters = {
-        storage_account_name   = var.storage_account_name
-        container_name = var.storage_account_container_name
+        storage_account_name = var.storage_account_name
+        container_name       = var.storage_account_container_name
+      }
+    }
+  }
+
+  dynamic "task" {
+    for_each = ["PIT", "NE", "GB"]
+    content {
+      task_key = format("silver-%s", task.value)
+
+      depends_on {
+        task_key = "bronze"
+      }
+
+      new_cluster {
+        num_workers   = 1
+        spark_version = "13.1.x-scala2.12"
+        node_type_id  = data.databricks_node_type.smallest.id
+        spark_conf = {
+          format("fs.azure.account.auth.type.%s.dfs.core.windows.net", var.storage_account_name)              = "OAuth"
+          format("fs.azure.account.oauth.provider.type.%s.dfs.core.windows.net", var.storage_account_name)    = "org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider"
+          format("fs.azure.account.oauth2.client.id.%s.dfs.core.windows.net", var.storage_account_name)       = format("{{secrets/%s/sp-databricks-poc-app-id}}", databricks_secret_scope.akv_secret_scope.name)
+          format("fs.azure.account.oauth2.client.secret.%s.dfs.core.windows.net", var.storage_account_name)   = format("{{secrets/%s/sp-databricks-poc-app-secret}}", databricks_secret_scope.akv_secret_scope.name)
+          format("fs.azure.account.oauth2.client.endpoint.%s.dfs.core.windows.net", var.storage_account_name) = format("https://login.microsoftonline.com/%s/oauth2/token", var.tenant_id)
+        }
+      }
+
+      notebook_task {
+        notebook_path = "notebooks/silver/curate.py"
+        source        = "Git Provider"
+        base_parameters = {
+          target_team          = task.value
+          storage_account_name = var.storage_account_name
+          container_name       = var.storage_account_container_name
+        }
       }
     }
   }
