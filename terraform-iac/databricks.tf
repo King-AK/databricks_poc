@@ -60,10 +60,10 @@ data "databricks_node_type" "smallest" {
   local_disk = true
 }
 
-# Use the latest Databricks Runtime Long Term Support (LTS) version.
-data "databricks_spark_version" "latest_lts" {
-  long_term_support = true
-}
+# # Use the latest Databricks Runtime Long Term Support (LTS) version.
+# data "databricks_spark_version" "latest_lts" {
+#   long_term_support = true
+# }
 
 # Get Keyvault information
 data "azurerm_key_vault" "keyVault" {
@@ -103,7 +103,7 @@ resource "databricks_secret_scope" "akv_secret_scope" {
 resource "databricks_cluster" "etl_cluster" {
   cluster_name            = var.databricks_etl_cluster_name
   node_type_id            = data.databricks_node_type.smallest.id
-  spark_version           = data.databricks_spark_version.latest_lts.id
+  spark_version           ="13.1.x-scala2.12"
   autotermination_minutes = 10
   num_workers             = 1
   spark_conf = {
