@@ -7,4 +7,3 @@ terraform/.terraform
 terraform/.*.hcl
 terraform-iac/*.tfstate*
 terraform/legacystuff/terraform.tfvars.json
-terraform/environment/poc.tfvars
