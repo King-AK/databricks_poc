@@ -3,7 +3,8 @@ venv
 .env
 
 # terraform stuff
-terraform-iac/.terraform
-terraform-iac/.*.hcl
+terraform/.terraform
+terraform/.*.hcl
 terraform-iac/*.tfstate*
-terraform-iac/terraform.tfvars.json
+terraform/legacystuff/terraform.tfvars.json
+terraform/environment/poc.tfvars
