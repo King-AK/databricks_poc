@@ -30,7 +30,3 @@ resource "azurerm_storage_blob" "layer_readme" {
   depends_on = [azurerm_storage_container.project_container]
 }
 
-
-#locals {
-#  project_files = { for project in var.projects, file in fileset("./${path.module}/data/layer-readmes", "*") : "${project.name}-${file}" => { project = project, file = file } }
-#}

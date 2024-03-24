@@ -17,7 +17,7 @@ variable "poc_location" {
 variable "poc_projects" {
   description = "The projects for the POC"
   type        = list(object({
-    name = string
+    name     = string
     metadata = map(string)
   }))
 }
@@ -31,10 +31,26 @@ module "azure-lake" {
   source                    = "./modules/azure-lake"
   lake_storage_account_name = var.poc_storage_account
   lake_resource_group_name  = var.poc_resource_group
-  lake_location = var.poc_location
-  tags = {
+  lake_location             = var.poc_location
+  tags                      = {
     project = "dbxpoc"
   }
-  projects = var.poc_projects
+  projects   = var.poc_projects
   depends_on = [azurerm_resource_group.poc_resource_group]
 }
+
+module "azure-databricks-workspace" {
+  source                    = "./modules/azure-databricks"
+  databricks_resource_group = var.poc_resource_group
+  databricks_location       = var.poc_location
+  tags                      = {
+    project = "dbxpoc"
+  }
+  depends_on = [azurerm_resource_group.poc_resource_group]
+}
+
+module "azure-databricks-unity-catalog" {
+  source     = "./modules/databricks-unity-catalog"
+  depends_on = [module.azure-databricks-workspace]
+}
+
