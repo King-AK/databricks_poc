@@ -1,4 +1,4 @@
-resource "databricks_sql_endpoint" "this" {
+resource "databricks_sql_endpoint" "general_small_endpoint" {
   name                      = "dbx-poc-sql-endpoint"
   cluster_size              = "2X-Small"
   max_num_clusters          = 1
@@ -12,3 +12,6 @@ resource "databricks_sql_endpoint" "this" {
     }
   }
 }
+
+
+// TODO set up unity catalog + dataase for projects
