@@ -1,5 +1,5 @@
 resource "databricks_sql_endpoint" "general_small_endpoint" {
-  name                      = "dbx-poc-sql-endpoint"
+  name                      = "general-small-sql-endpoint"
   cluster_size              = "2X-Small"
   max_num_clusters          = 1
   auto_stop_mins            = 10
@@ -8,10 +8,22 @@ resource "databricks_sql_endpoint" "general_small_endpoint" {
   tags {
     custom_tags {
       key   = "project"
-      value = "dbxpoc"
+      value = "general"
     }
   }
 }
 
+resource "databricks_metastore" "this" {
+  provider      = databricks
+  name          = "dbx-poc-metastore"
+  force_destroy = true
+  region        = var.databricks_location
+  storage_root  = var.databricks_storage_root
+}
 
-// TODO set up unity catalog + dataase for projects
+resource "databricks_metastore_assignment" "this" {
+  provider             = databricks
+  workspace_id         = var.databricks_workspace_id
+  metastore_id         = databricks_metastore.this.id
+  default_catalog_name = "hive_metastore"
+}

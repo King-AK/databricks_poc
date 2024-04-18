@@ -26,3 +26,8 @@ variable "databricks_sku" {
   type        = string
   default     = "premium"
 }
+
+variable "lake_storage_account_resource_id" {
+  description = "The resource ID of the storage account to use for the Databricks workspace"
+  type        = string
+}
