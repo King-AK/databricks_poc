@@ -1,8 +1,3 @@
-variable "databricks_workspace_resource_id" {
-  description = "The resource ID of the Databricks workspace"
-  type        = string
-}
-
 variable "databricks_workspace_id" {
   description = "The ID of the Databricks workspace"
   type        = number
