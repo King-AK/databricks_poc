@@ -14,16 +14,22 @@ resource "databricks_sql_endpoint" "general_small_endpoint" {
 }
 
 resource "databricks_metastore" "this" {
-  provider      = databricks
-  name          = "dbx-poc-metastore"
+  name          = "dbxpocms"
   force_destroy = true
   region        = var.databricks_location
   storage_root  = var.databricks_storage_root
 }
 
 resource "databricks_metastore_assignment" "this" {
-  provider             = databricks
   workspace_id         = var.databricks_workspace_id
   metastore_id         = databricks_metastore.this.id
   default_catalog_name = "hive_metastore"
+}
+
+resource "databricks_storage_credential" "external" {
+  name = "external-storage-credential"
+  azure_managed_identity {
+    access_connector_id = var.databricks_external_access_connector_id
+  }
+  comment = "Managed by Terraform"
 }
