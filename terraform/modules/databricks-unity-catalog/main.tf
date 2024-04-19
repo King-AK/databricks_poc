@@ -35,3 +35,36 @@ resource "databricks_storage_credential" "external" {
   comment    = "Managed by Terraform"
   depends_on = [databricks_metastore_assignment.this]
 }
+
+resource "databricks_external_location" "some" {
+  name = "external"
+  url  = var.databricks_storage_root
+
+  credential_name = databricks_storage_credential.external.id
+  comment         = "Managed by Terraform"
+  depends_on      = [databricks_metastore_assignment.this]
+}
+
+resource "databricks_external_location" "project_external_locations" {
+  for_each = {for project in var.projects : project.name => project}
+
+  name = each.key
+  url  = each.value.storage_root
+
+  credential_name = databricks_storage_credential.external.id
+  comment         = "Managed by Terraform"
+  depends_on      = [databricks_metastore_assignment.this]
+}
+
+// Create a catalog per project with gold/silver/bronze databases
+resource "databricks_catalog" "project_catalog" {
+  for_each = {for project in var.projects : project.name => project}
+
+  name         = each.key
+  storage_root = each.value.storage_root
+  comment      = "Managed by Terraform"
+  properties   = {
+    purpose = "For ${each.key} project"
+  }
+  depends_on = [databricks_metastore_assignment.this, databricks_external_location.project_external_locations]
+}

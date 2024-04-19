@@ -59,5 +59,6 @@ module "azure-databricks-unity-catalog" {
     module.azure-lake.storage_account_name)
   databricks_workspace_id                 = module.azure-databricks-workspace.databricks_workspace_id
   databricks_external_access_connector_id = module.azure-databricks-workspace.databricks_external_access_connector_id
+  projects                                = module.azure-lake.project_outputs
 }
 

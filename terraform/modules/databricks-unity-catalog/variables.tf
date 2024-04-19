@@ -17,3 +17,11 @@ variable "databricks_external_access_connector_id" {
   description = "The ID of the Databricks external access connector"
   type        = string
 }
+
+variable "projects" {
+  description = "A list of projects to create"
+  type        = list(object({
+    name         = string
+    storage_root = string
+  }))
+}
