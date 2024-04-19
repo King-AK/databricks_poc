@@ -15,15 +15,16 @@ resource "databricks_sql_endpoint" "general_small_endpoint" {
 
 resource "databricks_metastore" "this" {
   name          = "dbxpocms"
-  force_destroy = true
   region        = var.databricks_location
   storage_root  = var.databricks_storage_root
+  delta_sharing_scope = "INTERNAL"
+  delta_sharing_recipient_token_lifetime_in_seconds = 3600
 }
 
 resource "databricks_metastore_assignment" "this" {
   workspace_id         = var.databricks_workspace_id
   metastore_id         = databricks_metastore.this.id
-  default_catalog_name = "hive_metastore"
+  depends_on = [databricks_metastore.this]
 }
 
 resource "databricks_storage_credential" "external" {
@@ -32,4 +33,5 @@ resource "databricks_storage_credential" "external" {
     access_connector_id = var.databricks_external_access_connector_id
   }
   comment = "Managed by Terraform"
+  depends_on = [databricks_metastore_assignment.this]
 }
