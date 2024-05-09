@@ -1,5 +1,8 @@
 # databricks_poc
-Dummy repo to play around with Databricks. Spins up infrastructure and loads a Kaggle dataset [NFL Play-by-Play 2009-2018](https://www.kaggle.com/datasets/maxhorowitz/nflplaybyplay2009to2016) into a blob storage account where it is worked on further by Databricks notebooks.
+Repo to play around with Databricks.
+* Deploys Data Lake infrastructure using Terraform 
+* Loads a Kaggle dataset [NFL Play-by-Play 2009-2018](https://www.kaggle.com/datasets/maxhorowitz/nflplaybyplay2009to2016) into object storage
+* Databricks jobs coordinate movement of data through the lake using Scala and Python
 
 ## Deploy Infra
 
