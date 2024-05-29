@@ -25,5 +25,11 @@ poc_projects        = [
     metadata : {
       "description" : "spotify chart project built with kaggle dataset"
     }
+  },
+  {
+    name : "nfl-play-by-play-project"
+    metadata : {
+      "description" : "NFL play by play project built with kaggle dataset"
+    }
   }
 ]

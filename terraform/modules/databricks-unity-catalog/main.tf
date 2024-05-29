@@ -68,3 +68,31 @@ resource "databricks_catalog" "project_catalog" {
   }
   depends_on = [databricks_metastore_assignment.this, databricks_external_location.project_external_locations]
 }
+
+// Create bronze, silver, and gold databases in each project catalog
+resource "databricks_schema" "bronze_schema" {
+  for_each     = databricks_catalog.project_catalog
+
+  catalog_name = each.value.name
+  name         = "bronze"
+  comment      = "this database is managed by terraform"
+  storage_root = "${each.value.storage_root}bronze"
+}
+
+resource "databricks_schema" "silver_schema" {
+  for_each     = databricks_catalog.project_catalog
+
+  catalog_name = each.value.name
+  name         = "silver"
+  comment      = "this database is managed by terraform"
+  storage_root = "${each.value.storage_root}silver"
+}
+
+resource "databricks_schema" "gold_schema" {
+  for_each     = databricks_catalog.project_catalog
+
+  catalog_name = each.value.name
+  name         = "gold"
+  comment      = "this database is managed by terraform"
+  storage_root = "${each.value.storage_root}gold"
+}
