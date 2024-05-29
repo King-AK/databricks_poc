@@ -19,5 +19,11 @@ poc_projects        = [
     metadata : {
       "description" : "dummy project for the lake"
     }
+  },
+  {
+    name : "spotify-chart-project"
+    metadata : {
+      "description" : "spotify chart project built with kaggle dataset"
+    }
   }
 ]
