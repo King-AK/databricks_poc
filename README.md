@@ -1,8 +1,5 @@
 # databricks_poc
-Repo to play around with Databricks.
-* Deploys Data Lake infrastructure using Terraform 
-* Loads a Kaggle dataset [NFL Play-by-Play 2009-2018](https://www.kaggle.com/datasets/maxhorowitz/nflplaybyplay2009to2016) into object storage
-* Databricks jobs coordinate movement of data through the lake using Scala and Python
+Repo to play around with Databricks workspace configuration. Deploys Data Lake infrastructure using Terraform .
 
 ## Deploy Infra to Azure with Terraform
 
