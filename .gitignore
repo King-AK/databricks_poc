@@ -2,6 +2,9 @@ data
 venv
 .env
 
+# Intellij  IDEA
+.idea/
+
 # terraform stuff
 terraform/.terraform
 terraform/.*.hcl
