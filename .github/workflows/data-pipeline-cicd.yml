@@ -1,0 +1,179 @@
+name: Data Pipeline CI/CD
+run-name: ${{ github.actor }} initiated Data Pipeline CI/CD pipeline 🚀
+permissions:
+  contents: read
+  actions: read
+  checks: write
+# only run the deploy part of this workflow when a push event is triggered on the main branch
+#  when the workflow_dispatch event is triggered for any branch, parametrizing whether or not to register the image
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '*.*.*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      build-jar:
+        description: "Build the JAR?"
+        required: true
+        type: boolean
+        default: false
+
+env:
+  BUILD_RETENTION_COUNT: ${{ vars.BUILD_RETENTION_COUNT || '5' }}
+  PROJECT_NAME: bb-data-pipeline
+  GITHUB_TOKEN: ${{ secrets.SBT_GITHUB_TOKEN }}
+
+jobs:
+  Data-Pipeline-CI:
+    runs-on: ubuntu-latest
+    container:
+      image: ${{vars.DATA_PIPELINE_CI_IMAGE}}
+      credentials:
+        username: ${{secrets.REGISTRY_USERNAME}}
+        password: ${{secrets.REGISTRY_PASSWORD}}
+
+    steps:
+      - name: Check out repo code 📂
+        uses: actions/checkout@v2
+        with:
+          path: code
+
+      - name: Run Scala Tests 🧪
+        working-directory: ./code/spark-applications/data-pipeline
+        run: |
+          make test-ci
+
+      - name: Upload Test Results 📤
+        uses: actions/upload-artifact@v4 # upload test results
+        if: success() || failure() # run this step even if previous step failed
+        with:
+          name: test-results
+          path: code/spark-applications/data-pipeline/target/test-reports/**/*.xml
+
+      - name: Report Test Results 📤
+        uses: dorny/test-reporter@v1
+        if: success() || failure() # run this step even if previous step failed
+        with:
+          artifact: test-results
+          name: data-pipeline-test-results
+          path: "*.xml"
+          reporter: java-junit
+
+  Data-Pipeline-Build-JAR:
+    needs: Data-Pipeline-CI
+    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.build-jar == 'true') || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')))
+    env:
+      ARTIFACT_CONTAINER: artifact-container
+    runs-on: ubuntu-latest
+    container:
+      image: ${{vars.DATA_PIPELINE_CI_IMAGE}}
+      credentials:
+        username: ${{secrets.REGISTRY_USERNAME}}
+        password: ${{secrets.REGISTRY_PASSWORD}}
+    steps:
+      - name: Check out repo code 📂
+        uses: actions/checkout@v2
+        with:
+          path: code
+
+      - name: Login via Azure CLI 🔑
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Resolve Artifact Storage Path 🧭
+        id: resolve-storage-path
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          STORAGE_BASE="https://${{ secrets.BB_STORAGE_ACCOUNT_NAME }}.blob.core.windows.net/${{ secrets.BB_ARTIFACT_CONTAINER_NAME }}/${PROJECT_NAME}"
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            if [[ ! "${GITHUB_REF_NAME}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+              echo "Tag '${GITHUB_REF_NAME}' does not follow semantic versioning." >&2
+              exit 1
+            fi
+
+            echo "storage_path=${STORAGE_BASE}/tags/${GITHUB_REF_NAME}/data-pipeline.jar" >> "${GITHUB_OUTPUT}"
+            echo "is_tag_build=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          echo "storage_path=${STORAGE_BASE}/tmp-builds/${GITHUB_SHA}/data-pipeline.jar" >> "${GITHUB_OUTPUT}"
+          echo "is_tag_build=false" >> "${GITHUB_OUTPUT}"
+
+      - name: Publish Package to Artifact Storage 🛠️
+        working-directory: ./code/spark-applications/data-pipeline
+        env:
+          STORAGE_PATH: ${{ steps.resolve-storage-path.outputs.storage_path }}
+        run: |
+          make assemble-jar
+          JAR_PATH=target/scala-2.13/data-pipeline-assembly-*.jar
+          echo "attempting az storage copy of $JAR_PATH to $STORAGE_PATH ..."
+          az storage copy -s $JAR_PATH -d $STORAGE_PATH
+
+      - name: Prune Old Temporary JARs 🧹
+        if: steps.resolve-storage-path.outputs.is_tag_build != 'true'
+        env:
+          STORAGE_ACCOUNT_NAME: ${{ secrets.BB_STORAGE_ACCOUNT_NAME }}
+          STORAGE_CONTAINER_NAME: ${{ secrets.BB_ARTIFACT_CONTAINER_NAME }}
+          BUILD_RETENTION_COUNT: ${{ env.BUILD_RETENTION_COUNT }}
+        shell: bash
+        run: |
+          BLOBS_FILE="$(mktemp)"
+
+          az storage blob list \
+            --account-name "${STORAGE_ACCOUNT_NAME}" \
+            --container-name "${STORAGE_CONTAINER_NAME}" \
+            --prefix "${PROJECT_NAME}/tmp-builds/" \
+            --auth-mode login \
+            --output json > "${BLOBS_FILE}"
+
+          mapfile -t OLD_BLOBS < <(
+            python - "${BLOBS_FILE}" <<'PY'
+          import json
+          import os
+          import sys
+
+          retention_count = int(os.environ["BUILD_RETENTION_COUNT"])
+          with open(sys.argv[1], encoding="utf-8") as blobs_file:
+              blobs = json.load(blobs_file)
+
+          jar_blobs = [
+              blob for blob in blobs
+              if (blob.get("name") or "").endswith("/data-pipeline.jar")
+          ]
+          jar_blobs.sort(key=lambda blob: blob.get("properties", {}).get("lastModified", ""), reverse=True)
+
+          for blob in jar_blobs[retention_count:]:
+              blob_name = blob.get("name")
+              if blob_name:
+                  print(blob_name)
+          PY
+          )
+
+          rm -f "${BLOBS_FILE}"
+
+          if [ "${#OLD_BLOBS[@]}" -eq 0 ]; then
+            echo "No old temporary JARs to prune for ${PROJECT_NAME}. Retention count: ${BUILD_RETENTION_COUNT}."
+            exit 0
+          fi
+
+          for blob_name in "${OLD_BLOBS[@]}"; do
+            if [ -n "${blob_name}" ]; then
+              echo "Deleting ${blob_name}"
+              az storage blob delete \
+                --account-name "${STORAGE_ACCOUNT_NAME}" \
+                --container-name "${STORAGE_CONTAINER_NAME}" \
+                --name "${blob_name}" \
+                --auth-mode login
+            fi
+          done

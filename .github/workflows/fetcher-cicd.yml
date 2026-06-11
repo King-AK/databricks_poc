@@ -1,0 +1,205 @@
+name: Fetcher CI/CD
+run-name: ${{ github.actor }} initiated Fetcher CI/CD pipeline 🚀
+permissions:
+  contents: write
+  actions: read
+  checks: write
+# only run the deploy part of this workflow when a push event is triggered on the main branch
+#  when the workflow_dispatch event is triggered for any branch, parametrizing whether or not to register the image
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '*.*.*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      register-image:
+        description: "Register the Docker image?"
+        required: true
+        type: boolean
+        default: false
+
+env:
+  IMAGE_RETENTION_COUNT: ${{ vars.CICD_IMAGE_RETENTION_COUNT || '5' }}
+  PROJECT_NAME: bb-fetcher
+
+jobs:
+  Fetcher-CI:
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ vars.FETCHER_CI_IMAGE }}
+      credentials:
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+
+    steps:
+      - name: Check out repo code 📂
+        uses: actions/checkout@v4
+        with:
+          path: code
+      - name: Run Python Linting and Tests with Coverage 🧪
+        working-directory: ./code/container-services/fetcher
+        run: |
+          ls
+          make test-cov
+
+      - name: Upload Test Results 📤
+        uses: actions/upload-artifact@v4 # upload test results
+        if: success() || failure() # run this step even if previous step failed
+        with:
+          name: test-results
+          path: code/container-services/fetcher/report.xml
+          retention-days: 5
+
+      - name: Upload Coverage Results 📤
+        uses: actions/upload-artifact@v4 # upload test results
+        if: success() || failure() # run this step even if previous step failed
+        with:
+          name: coverage-results
+          path: code/container-services/fetcher/coverage.xml
+          retention-days: 5
+
+      - name: Report Test Results 📤
+        uses: dorny/test-reporter@v1
+        with:
+          artifact: test-results
+          name: fetcher-test-results
+          path: "*.xml"
+          reporter: java-junit
+
+      - name: Report Coverage Results 📤
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: code/container-services/fetcher/coverage.xml
+          badge: true
+
+  Fetcher-Register:
+    needs: Fetcher-CI
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.register-image == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo code 📂
+        uses: actions/checkout@v2
+
+      - name: Resolve Image Tag 🧭
+        id: resolve-image-tag
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            if [[ ! "${GITHUB_REF_NAME}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+              echo "Tag '${GITHUB_REF_NAME}' does not follow semantic versioning." >&2
+              exit 1
+            fi
+
+            echo "image_tag=${GITHUB_REF_NAME}" >> "${GITHUB_OUTPUT}"
+            echo "is_release_build=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          echo "image_tag=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "is_release_build=false" >> "${GITHUB_OUTPUT}"
+
+      - name: Login via Azure CLI 🔑
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Docker Login 🐳
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.REGISTRY_SERVER }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and Push Docker Image 🐳
+        working-directory: ./container-services/fetcher
+        env:
+          IMAGE_TAG: ${{ steps.resolve-image-tag.outputs.image_tag }}
+          IS_RELEASE_BUILD: ${{ steps.resolve-image-tag.outputs.is_release_build }}
+        shell: bash
+        run: |
+          DOCKER_BUILD_ARGS=(
+            --no-cache
+            --tag "${{ secrets.REGISTRY_SERVER }}/${{ env.PROJECT_NAME }}:${IMAGE_TAG}"
+            --file docker/Dockerfile
+          )
+
+          if [ "${IS_RELEASE_BUILD}" != "true" ]; then
+            DOCKER_BUILD_ARGS+=(--tag "${{ secrets.REGISTRY_SERVER }}/${{ env.PROJECT_NAME }}:latest")
+          fi
+
+          docker build "${DOCKER_BUILD_ARGS[@]}" .
+          docker push "${{ secrets.REGISTRY_SERVER }}/${{ env.PROJECT_NAME }}:${IMAGE_TAG}"
+
+          if [ "${IS_RELEASE_BUILD}" != "true" ]; then
+            docker push "${{ secrets.REGISTRY_SERVER }}/${{ env.PROJECT_NAME }}:latest"
+          fi
+
+      - name: Prune Old Docker Images 🧹
+        if: steps.resolve-image-tag.outputs.is_release_build != 'true'
+        env:
+          REGISTRY_SERVER: ${{ secrets.REGISTRY_SERVER }}
+          IMAGE_RETENTION_COUNT: ${{ env.IMAGE_RETENTION_COUNT }}
+        shell: bash
+        run: |
+          REGISTRY_NAME="${REGISTRY_SERVER%%.*}"
+          MANIFESTS_FILE="$(mktemp)"
+
+          az acr manifest list-metadata \
+            --name "${PROJECT_NAME}" \
+            --registry "${REGISTRY_NAME}" \
+            --orderby time_desc \
+            --output json > "${MANIFESTS_FILE}"
+
+          mapfile -t OLD_DIGESTS < <(
+            python - "${MANIFESTS_FILE}" <<'PY'
+          import json
+          import os
+          import re
+          import sys
+
+          retention_count = int(os.environ["IMAGE_RETENTION_COUNT"])
+          with open(sys.argv[1], encoding="utf-8") as manifests_file:
+              manifests = json.load(manifests_file)
+          sha_tag_pattern = re.compile(r"^[0-9a-f]{40}$", re.IGNORECASE)
+
+          sha_manifests_seen = 0
+          for manifest in manifests:
+              tags = manifest.get("tags") or []
+              if not any(sha_tag_pattern.fullmatch(tag or "") for tag in tags):
+                  continue
+
+              sha_manifests_seen += 1
+              if sha_manifests_seen <= retention_count:
+                  continue
+
+              digest = manifest.get("digest")
+              if digest:
+                  print(digest)
+          PY
+          )
+
+          rm -f "${MANIFESTS_FILE}"
+
+          if [ "${#OLD_DIGESTS[@]}" -eq 0 ]; then
+            echo "No old SHA-tagged images to prune for ${PROJECT_NAME}. Retention count: ${IMAGE_RETENTION_COUNT}."
+            exit 0
+          fi
+
+          for digest in "${OLD_DIGESTS[@]}"; do
+            if [ -n "${digest}" ]; then
+              echo "Deleting ${PROJECT_NAME}@${digest}"
+              az acr repository delete \
+                --name "${REGISTRY_NAME}" \
+                --image "${PROJECT_NAME}@${digest}" \
+                --yes
+            fi
+          done
