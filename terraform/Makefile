@@ -3,7 +3,6 @@ SHELL := /bin/bash
 # Defaults (override on the command line)
 ENVIRONMENT ?= poc
 ACTION ?= create
-# TARGET_DIR ?= foundation
 
 TFVARS_PATH := $(CURDIR)/environment/$(ENVIRONMENT).tfvars
 ENV_FILE := $(CURDIR)/../.env
@@ -30,9 +29,6 @@ help: ## Show this help message
 .ONESHELL:
 init:  ## Initialize Terraform
 	. $(ENV_FILE)
-	export TF_VAR_azure_databricks_workspace_resource_id=$$TF_VAR_azure_databricks_workspace_resource_id
-	export TF_VAR_azure_databricks_workspace_url=$$TF_VAR_azure_databricks_workspace_url
-	export TF_VAR_alphavantage_api_key=$$TF_VAR_alphavantage_api_key
 	echo "Initializing Terraform .."
 	if [[ -f "./local.azurerm.tfbackend" ]]; then \
 	  echo "Using local.azurerm.tfbackend for backend configuration."; \
@@ -52,9 +48,6 @@ validate: init ## Validate Terraform configuration
 plan: init ## Generate a Terraform plan (create or destroy)
 	@test -f $(TFVARS_PATH) || (echo "Var-file $(TFVARS_PATH) not found"; exit 1)
 	@. $(ENV_FILE)
-	@export TF_VAR_azure_databricks_workspace_resource_id=$$TF_VAR_azure_databricks_workspace_resource_id
-	@export TF_VAR_azure_databricks_workspace_url=$$TF_VAR_azure_databricks_workspace_url
-	@export TF_VAR_alphavantage_api_key=$$TF_VAR_alphavantage_api_key
 	@if [[ "$(ACTION)" == "create" ]]; then \
 	  echo "Generating Terraform plan (create) using $(TFVARS_PATH)..."; \
 	  terraform plan -var-file=$(TFVARS_PATH) -out=local.tfplan; \
