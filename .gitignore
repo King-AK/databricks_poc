@@ -5,8 +5,10 @@ venv
 # Intellij  IDEA
 .idea/
 
-# terraform stuff
-terraform/.terraform
-terraform/.*.hcl
-terraform/*.tfstate*
-terraform/legacystuff/terraform.tfvars.json
+# Terraform 
+*.terraform
+*.tfstate*
+*.hcl
+*.tfbackend
+*.tfplan
+.DS_Store
