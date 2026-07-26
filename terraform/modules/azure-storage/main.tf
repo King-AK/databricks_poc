@@ -17,7 +17,7 @@ resource "azurerm_storage_container" "databricks_root_container" {
 }
 
 resource "azurerm_storage_container" "project_container" {
-  for_each = {for project in var.projects : project.name => project}
+  for_each = { for project in var.projects : project.name => project }
 
   name                  = each.key
   storage_account_id    = azurerm_storage_account.lake.id

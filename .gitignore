@@ -6,9 +6,10 @@ venv
 .idea/
 
 # Terraform 
-*.terraform
+.terraform/
 *.tfstate*
-*.hcl
 *.tfbackend
 *.tfplan
+.terraform.lock.hcl
 .DS_Store
+.scratch

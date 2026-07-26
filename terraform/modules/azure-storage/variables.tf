@@ -23,8 +23,8 @@ variable "tags" {
 
 variable "projects" {
   description = "A list of projects to create"
-  type        = list(object({
-    name = string
+  type = list(object({
+    name     = string
     metadata = map(string)
   }))
   default = []

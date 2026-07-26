@@ -18,7 +18,7 @@ resource "databricks_storage_credential" "external" {
   azure_managed_identity {
     access_connector_id = var.databricks_external_access_connector_id
   }
-  comment    = "Managed by Terraform"
+  comment = "Managed by Terraform"
 }
 
 resource "databricks_external_location" "some" {
@@ -31,7 +31,7 @@ resource "databricks_external_location" "some" {
 }
 
 resource "databricks_external_location" "project_external_locations" {
-  for_each = {for project in var.projects : project.name => project}
+  for_each = { for project in var.projects : project.name => project }
 
   name = each.key
   url  = each.value.storage_root
@@ -43,12 +43,12 @@ resource "databricks_external_location" "project_external_locations" {
 
 // Create a catalog per project with gold/silver/bronze databases
 resource "databricks_catalog" "project_catalog" {
-  for_each = {for project in var.projects : project.name => project}
+  for_each = { for project in var.projects : project.name => project }
 
   name         = each.key
   storage_root = each.value.storage_root
   comment      = "Managed by Terraform"
-  properties   = {
+  properties = {
     purpose = "For ${each.key} project"
   }
   depends_on = [databricks_external_location.project_external_locations]
@@ -56,7 +56,7 @@ resource "databricks_catalog" "project_catalog" {
 
 // Create bronze, silver, and gold databases in each project catalog
 resource "databricks_schema" "bronze_schema" {
-  for_each     = databricks_catalog.project_catalog
+  for_each = databricks_catalog.project_catalog
 
   catalog_name = each.value.name
   name         = "bronze"
@@ -65,7 +65,7 @@ resource "databricks_schema" "bronze_schema" {
 }
 
 resource "databricks_schema" "silver_schema" {
-  for_each     = databricks_catalog.project_catalog
+  for_each = databricks_catalog.project_catalog
 
   catalog_name = each.value.name
   name         = "silver"
@@ -74,7 +74,7 @@ resource "databricks_schema" "silver_schema" {
 }
 
 resource "databricks_schema" "gold_schema" {
-  for_each     = databricks_catalog.project_catalog
+  for_each = databricks_catalog.project_catalog
 
   catalog_name = each.value.name
   name         = "gold"

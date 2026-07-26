@@ -6,6 +6,6 @@ terraform {
     key                  = "xxx.terraform.tfstate"
     tenant_id            = "your_tenant_id"
     use_azuread_auth     = true
-    use_cli              = true  
+    use_cli              = true
   }
 }

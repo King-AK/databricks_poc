@@ -16,7 +16,7 @@ output "project_outputs" {
       name = container.name
       storage_root = format("abfss://%s@%s.dfs.core.windows.net/",
         container.name,
-        azurerm_storage_account.lake.name)
+      azurerm_storage_account.lake.name)
     }
 
   ]
