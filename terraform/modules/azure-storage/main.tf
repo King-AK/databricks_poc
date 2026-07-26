@@ -10,17 +10,17 @@ resource "azurerm_storage_account" "lake" {
 
 resource "azurerm_storage_container" "databricks_root_container" {
   name                  = "databricks-unity-catalog-root"
-  storage_account_name  = azurerm_storage_account.lake.name
+  storage_account_id    = azurerm_storage_account.lake.id
   container_access_type = "private"
 
   depends_on = [azurerm_storage_account.lake]
 }
 
 resource "azurerm_storage_container" "project_container" {
-  for_each = {for project in var.projects : project.name => project}
+  for_each = { for project in var.projects : project.name => project }
 
   name                  = each.key
-  storage_account_name  = azurerm_storage_account.lake.name
+  storage_account_id    = azurerm_storage_account.lake.id
   container_access_type = "private"
   metadata              = each.value.metadata
 

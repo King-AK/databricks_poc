@@ -3,11 +3,11 @@ resource "azurerm_databricks_workspace" "databricks_workspace" {
   resource_group_name = var.databricks_resource_group
   location            = var.databricks_location
   sku                 = var.databricks_sku
-  tags = var.tags
+  tags                = var.tags
 }
 
 resource "azurerm_databricks_access_connector" "ext_access_connector" {
-  name                = "ext-databricks-mi"
+  name                = "ext-databricks-poc-mi"
   resource_group_name = var.databricks_resource_group
   location            = var.databricks_location
   identity {
